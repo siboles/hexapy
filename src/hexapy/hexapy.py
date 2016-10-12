@@ -160,37 +160,15 @@ class Mesher(object):
 
         blockList = []
 
-        blockList.append(self._makeBlock(x_origin,
-                                         y_origin,
-                                         z_origin,
-                                         x_length,
-                                         y_length,
-                                         z_length,
-                                         x_div,
-                                         y_div,
-                                         z_div))
-        blockList.append(self._makeBlock(x_origin,
-                                         y_origin,
-                                         z_length / 2.0,
-                                         x_length,
-                                         y_length,
-                                         z_length,
-                                         x_div,
-                                         y_div,
-                                         z_div))
-
-        blockList.append(self._makeBlock(x_length / 2.0,
-                                         y_origin,
-                                         z_origin,
-                                         x_length,
-                                         y_length,
-                                         z_length,
-                                         x_div,
-                                         y_div,
-                                         z_div))
-
-        blockList[1] = self._interpCylindrical(blockList[1], 2, 1, [3*np.pi / 4.0, np.pi / 4.0], "top")
-        block = self._mergeBlocks(blockList)
+        block = self._makeBlock(x_origin,
+                                y_origin,
+                                z_origin,
+                                x_length,
+                                y_length,
+                                z_length,
+                                x_div,
+                                y_div,
+                                z_div)
 
         # node sets
         n_xn = np.argwhere(block["nodes"][:,0] < x_origin + 1e-7).ravel() + block["node_ids"][0]
@@ -545,7 +523,9 @@ class Mesher(object):
         self.meshes.append(mesh_dict)
 
 
-    def makeSphere(self, **kwargs):
+    def makeEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
+                      r_major_div=10, r_middle_div=10, r_minor_div=10,
+                      r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
         Create a sphere.
 
@@ -553,19 +533,116 @@ class Mesher(object):
         ----------
         name : str, optional
             Name identifier for mesh. Defaults to "Part {:s}".format(index in meshes)
-        r : float 1.0, optional
-            Radius of sphere
-        r_div : int 10, optional
-            Number of element divisions in the radial direction
-        r_edge : float=-1.0, optional
-            Overrides *r_div* with absolute radial edge length (ignored if non-positive)
+        r_major : float 1.0, optional
+            Major radius of ellipsoid
+        r_middle : float 1.0, optional
+            Middle radius of ellipsoid
+        r_minor : float 1.0, optional
+            Minor radius of ellipsoid
+        r_major_div : int 10, optional
+            Number of element divisions in the major radial direction
+        r_middle_div : int 10, optional
+            Number of element divisions in the middle radial direction
+        r_minor_div : int 10, optional
+            Number of element divisions in the minor radial direction
+        r_major_edge : float=-1.0, optional
+            Overrides *r_major_div* with absolute radial edge length (ignored if non-positive)
+        r_middle_edge : float=-1.0, optional
+            Overrides *r_middle_div* with absolute radial edge length (ignored if non-positive)
+        r_minor_edge : float=-1.0, optional
+            Overrides *r_minor_div* with absolute radial edge length (ignored if non-positive)
 
         Returns
         -------
-        Appends a sphere mesh definition to *meshes*.
+        Appends an ellipsoidal mesh definition to *meshes*.
         """
-        pass
+        blockList = []
+        #middle
+        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+                                         y_origin=-r_middle / 2.0,
+                                         z_origin=-r_minor / 2.0,
+                                         x_length=r_major,
+                                         y_length=r_middle,
+                                         z_length=r_minor,
+                                         x_div=r_major_div,
+                                         y_div=r_middle_div,
+                                         z_div=r_minor_div))
+        # top
+        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+                                         y_origin=-r_middle / 2.0,
+                                         z_origin=r_minor / 2.0,
+                                         x_length=r_major,
+                                         y_length=r_middle,
+                                         z_length=r_minor / 2.0,
+                                         x_div=r_major_div,
+                                         y_div=r_middle_div,
+                                         z_div=int(r_minor_div / 2.0)))
+        # bottom
+        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+                                         y_origin=-r_middle / 2.0,
+                                         z_origin=-r_minor,
+                                         x_length=r_major,
+                                         y_length=r_middle,
+                                         z_length=r_minor / 2.0,
+                                         x_div=r_major_div,
+                                         y_div=r_middle_div,
+                                         z_div=int(r_minor_div / 2.0)))
+        # left
+        blockList.append(self._makeBlock(x_origin=-r_major,
+                                         y_origin=-r_middle / 2.0,
+                                         z_origin=-r_minor / 2.0,
+                                         x_length=r_major / 2.0,
+                                         y_length=r_middle,
+                                         z_length=r_minor,
+                                         x_div=int(r_major_div / 2.0),
+                                         y_div=r_middle_div,
+                                         z_div=r_minor_div))
+        # right
+        blockList.append(self._makeBlock(x_origin=r_major / 2.0,
+                                         y_origin=-r_middle / 2.0,
+                                         z_origin=-r_minor / 2.0,
+                                         x_length=r_major / 2.0,
+                                         y_length=r_middle,
+                                         z_length=r_minor,
+                                         x_div=int(r_major_div / 2.0),
+                                         y_div=r_middle_div,
+                                         z_div=r_minor_div))
+        # back
+        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+                                         y_origin=-r_middle,
+                                         z_origin=-r_minor / 2.0,
+                                         x_length=r_major,
+                                         y_length=r_middle / 2.0,
+                                         z_length=r_minor,
+                                         x_div=r_major_div,
+                                         y_div=int(r_middle_div / 2.0),
+                                         z_div=r_minor_div))
+        # front
+        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+                                         y_origin=r_middle / 2.0,
+                                         z_origin=-r_minor / 2.0,
+                                         x_length=r_major,
+                                         y_length=r_middle / 2.0,
+                                         z_length=r_minor,
+                                         x_div=r_major_div,
+                                         y_div=int(r_middle_div / 2.0),
+                                         z_div=r_minor_div))
+        cases = ["top", "bottom", "left", "right", "back", "front"]
+        for i, b in enumerate(blockList[1:]):
+            blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="none")
 
+        block = self._mergeBlocks(blockList)
+
+        mesh_dict = {"Name": name,
+                     "Nodes": block["nodes"],
+                     "NodeIDs": block["node_ids"],
+                     "Elements": block["elements"],
+                     "ElementIDs": block["element_ids"],
+                     "NodeSets": {},
+                     "ElementSets": {},
+                     "FaceSets": {}}
+
+        self.meshes.append(mesh_dict)
 
     def makeHalfSphere(self, **kwargs):
         r"""
@@ -748,8 +825,81 @@ class Mesher(object):
 
         return block
 
-    def _interpSpherical(self):
-        pass
+    def _interpSpherical(self, block, a, b, c, case, sym):
+        r"""
+        Map nodal coordinates of passed block to cylinder defined in polar.
+
+        Parameters
+        ----------
+        block : dict
+            The block to map.
+        a : float
+            The major radius of the ellipsoid
+        b : float
+            The middle radius of the ellipsoid
+        c : float
+            The minor radius of the ellipsoid
+        case : str
+            Side of block to project to arc.
+            Options - 'left', 'right', 'top', 'bottom', 'back', 'front'
+        sym : str
+            Symmetry case.
+            Options - 'none', 'half', 'quarter', 'eighth'
+
+        Returns
+        -------
+        The block with mapped nodal coordinates.
+        """
+
+        # find direction vectors for projection to ellipsoid
+        p, v = self._findProjectionDirection(block["nodes"], case)
+        # the intersection of each ray with the ellipsoid is the solution to a quadratic
+        # ray: p[0] = p_0[0] + v[0]*t, p[1] = p_0[1] + v[1]*t, p[2] = p_0[2] + v[2]*t
+        # ellipsoid: p[0]**2 / a**2 + p[1]**2 / b**2 + p[2]**2 / c**2 = 1
+        # substituting, expanding, and grouping terms yields quadratic formula terms:
+        # qa = (v[0]**2 / a**2 + v[1]**2 / b**2 +v[2]**2 / c**2)
+        # qb = 2*(p[0]*v[0] / a**2 + p[1]*v[1] / b**2 + p[2]*v[2 / c**2)
+        # qc = p_0[0]**2 / a**2 + p_0[1]**2 / b**2 + p_0[2]**2 / c**2 - 1
+        qa = np.sum((v / [a, b, c]) ** 2, 1)
+        qb = np.sum(2 * p * v / [a ** 2, b ** 2, c ** 2], 1)
+        qc = np.sum((p / [a, b, c]) ** 2, 1) - 1.0
+        i1 = (-qb + np.sqrt(qb ** 2 - 4 * qa * qc)) / (2 * qa)
+        i2 = (-qb - np.sqrt(qb ** 2 - 4 * qa * qc)) / (2 * qa)
+        wrong_ints = np.argwhere(i1 < 0.0)
+        i1[wrong_ints] = i2[wrong_ints]
+        intersections = p + np.multiply(v, i1.reshape(-1, 1))
+        if case == 'top':
+            t = block["nodes"][:,2] - np.min(block["nodes"][:,2])
+            t /= np.max(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+        elif case == 'bottom':
+            t = block["nodes"][:,2] - np.max(block["nodes"][:,2])
+            t /= np.min(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+        elif case == 'left':
+            t = block["nodes"][:,0] - np.max(block["nodes"][:,0])
+            t /= np.min(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+        elif case == 'right':
+            t = block["nodes"][:,0] - np.min(block["nodes"][:,0])
+            t /= np.max(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+        elif case == 'back':
+            t = block["nodes"][:,1] - np.max(block["nodes"][:,1])
+            t /= np.min(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+        elif case == 'front':
+            t = block["nodes"][:,1] - np.min(block["nodes"][:,1])
+            t /= np.max(t)
+            image = p + t.reshape(-1, 1)*v*(np.linalg.norm(intersections - p, axis=1).reshape(-1, 1))
+            block["nodes"] = image
+
+        return block
 
     def _mergeBlocks(self, blockList, tol=1e-14):
         r"""
@@ -796,6 +946,41 @@ class Mesher(object):
         new_block["node_ids"] = np.array(listOfNodes)
         new_block["element_ids"] = np.arange(new_block["elements"].shape[0]) + 1
         return new_block
+
+    def _findProjectionDirection(self, points, case):
+        directions = np.copy(points)
+        mins  = np.min(directions, 0)
+        maxes = np.max(directions, 0)
+        h = np.min(np.abs(np.vstack((mins, maxes))), 0)
+        l = maxes - mins
+        t45 = np.tan(np.pi / 4.0)
+        x = h / t45
+        r = 1.0 - 2 * x / l
+        scaled = points * r
+        if case == "top":
+            directions[:,2] = mins[2]
+            scaled[:,2] = 0.0
+        elif case == "bottom":
+            directions[:,2] = maxes[2]
+            scaled[:,2] = 0.0
+        elif case == "left":
+            directions[:,0] = maxes[0]
+            scaled[:,0] = 0.0
+        elif case == "right":
+            directions[:,0] = mins[0]
+            scaled[:,0] = 0.0
+        elif case == "back":
+            directions[:,1] = maxes[1]
+            scaled[:,1] = 0.0
+        elif case == "front":
+            directions[:,1] = mins[1]
+            scaled[:,1] = 0.0
+
+        d = directions - scaled
+        return directions, d / np.linalg.norm(d, axis=1).reshape(-1, 1)
+
+    def _findEllipIntersect(self, a, b, c, directions):
+        pass
 
     def applyRigidTransform(self, mesh_index=None, **kwargs):
         r"""
