@@ -556,77 +556,85 @@ class Mesher(object):
         -------
         Appends an ellipsoidal mesh definition to *meshes*.
         """
+
+        prop = (np.pi / 48.0)**(1. / 3.)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(np.ceil(r_middle_div * prop))
+        iz = int(r_minor_div * prop)
+        bfx = int(np.ceil(r_major_div * (1-prop)))
+        bfy = int(np.ceil(r_middle_div * (1-prop)))
+        bfz = int(np.ceil(r_minor_div * (1-prop)))
         blockList = []
         #middle
-        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
-                                         y_origin=-r_middle / 2.0,
-                                         z_origin=-r_minor / 2.0,
-                                         x_length=r_major,
-                                         y_length=r_middle,
-                                         z_length=r_minor,
-                                         x_div=r_major_div,
-                                         y_div=r_middle_div,
-                                         z_div=r_minor_div))
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_middle * prop,
+                                         z_length=2 * r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=2*iy,
+                                         z_div=2*iz))
         # top
-        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
-                                         y_origin=-r_middle / 2.0,
-                                         z_origin=r_minor / 2.0,
-                                         x_length=r_major,
-                                         y_length=r_middle,
-                                         z_length=r_minor / 2.0,
-                                         x_div=r_major_div,
-                                         y_div=r_middle_div,
-                                         z_div=int(r_minor_div / 2.0)))
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * (1-prop),
+                                         x_div=2*ix,
+                                         y_div=2*iy,
+                                         z_div=bfz))
         # bottom
-        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
-                                         y_origin=-r_middle / 2.0,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle * prop,
                                          z_origin=-r_minor,
-                                         x_length=r_major,
-                                         y_length=r_middle,
-                                         z_length=r_minor / 2.0,
-                                         x_div=r_major_div,
-                                         y_div=r_middle_div,
-                                         z_div=int(r_minor_div / 2.0)))
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * (1-prop),
+                                         x_div=2*ix,
+                                         y_div=2*iy,
+                                         z_div=bfz))
         # left
         blockList.append(self._makeBlock(x_origin=-r_major,
-                                         y_origin=-r_middle / 2.0,
-                                         z_origin=-r_minor / 2.0,
-                                         x_length=r_major / 2.0,
-                                         y_length=r_middle,
-                                         z_length=r_minor,
-                                         x_div=int(r_major_div / 2.0),
-                                         y_div=r_middle_div,
-                                         z_div=r_minor_div))
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=2 * r_middle * prop,
+                                         z_length=2 * r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=2*iy,
+                                         z_div=2*iz))
         # right
-        blockList.append(self._makeBlock(x_origin=r_major / 2.0,
-                                         y_origin=-r_middle / 2.0,
-                                         z_origin=-r_minor / 2.0,
-                                         x_length=r_major / 2.0,
-                                         y_length=r_middle,
-                                         z_length=r_minor,
-                                         x_div=int(r_major_div / 2.0),
-                                         y_div=r_middle_div,
-                                         z_div=r_minor_div))
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=2 * r_middle * prop,
+                                         z_length=2 * r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=2*iy,
+                                         z_div=2*iz))
         # back
-        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
                                          y_origin=-r_middle,
-                                         z_origin=-r_minor / 2.0,
-                                         x_length=r_major,
-                                         y_length=r_middle / 2.0,
-                                         z_length=r_minor,
-                                         x_div=r_major_div,
-                                         y_div=int(r_middle_div / 2.0),
-                                         z_div=r_minor_div))
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=2 * r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=bfy,
+                                         z_div=2*iz))
         # front
-        blockList.append(self._makeBlock(x_origin=-r_major / 2.0,
-                                         y_origin=r_middle / 2.0,
-                                         z_origin=-r_minor / 2.0,
-                                         x_length=r_major,
-                                         y_length=r_middle / 2.0,
-                                         z_length=r_minor,
-                                         x_div=r_major_div,
-                                         y_div=int(r_middle_div / 2.0),
-                                         z_div=r_minor_div))
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=2 * r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=bfy,
+                                         z_div=2*iz))
         cases = ["top", "bottom", "left", "right", "back", "front"]
         for i, b in enumerate(blockList[1:]):
             blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="none")
@@ -979,8 +987,6 @@ class Mesher(object):
         d = directions - scaled
         return directions, d / np.linalg.norm(d, axis=1).reshape(-1, 1)
 
-    def _findEllipIntersect(self, a, b, c, directions):
-        pass
 
     def applyRigidTransform(self, mesh_index=None, **kwargs):
         r"""
