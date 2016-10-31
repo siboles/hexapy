@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial import cKDTree
 import itertools
+import string
 
 class Mesher(object):
     def __init__(self):
@@ -158,8 +159,6 @@ class Mesher(object):
         if z_origin is None:
             z_origin = -z_length / 2.0
 
-        blockList = []
-
         block = self._makeBlock(x_origin,
                                 y_origin,
                                 z_origin,
@@ -171,13 +170,20 @@ class Mesher(object):
                                 z_div)
 
         # node sets
-        n_xn = np.argwhere(block["nodes"][:,0] < x_origin + 1e-7).ravel() + block["node_ids"][0]
-        n_xp = np.argwhere(block["nodes"][:,0] > x_origin + x_length - 1e-7).ravel() + block["node_ids"][0]
-        n_yn = np.argwhere(block["nodes"][:,1] < y_origin + 1e-7).ravel() + block["node_ids"][0]
-        n_yp = np.argwhere(block["nodes"][:,1] > y_origin + y_length - 1e-7).ravel() + block["node_ids"][0]
-        n_zn = np.argwhere(block["nodes"][:,2] < z_origin + 1e-7).ravel() + block["node_ids"][0]
-        n_zp = np.argwhere(block["nodes"][:,2] > z_origin + z_length - 1e-7).ravel() + block["node_ids"][0]
+        n_xn = block["node_ids"][np.argwhere(block["nodes"][:,0] < x_origin + 1e-7).ravel()]
+        n_xp = block["node_ids"][np.argwhere(block["nodes"][:,0] > x_origin + x_length - 1e-7).ravel()]
+        n_yn = block["node_ids"][np.argwhere(block["nodes"][:,1] < y_origin + 1e-7).ravel()]
+        n_yp = block["node_ids"][np.argwhere(block["nodes"][:,1] > y_origin + y_length - 1e-7).ravel()]
+        n_zn = block["node_ids"][np.argwhere(block["nodes"][:,2] < z_origin + 1e-7).ravel()]
+        n_zp = block["node_ids"][np.argwhere(block["nodes"][:,2] > z_origin + z_length - 1e-7).ravel()]
 
+        #face sets
+        f_xn = self._faceSetFromNodeSet(n_xn, block["elements"], block["element_ids"])
+        f_xp = self._faceSetFromNodeSet(n_xp, block["elements"], block["element_ids"]) 
+        f_yn = self._faceSetFromNodeSet(n_yn, block["elements"], block["element_ids"]) 
+        f_yp = self._faceSetFromNodeSet(n_yp, block["elements"], block["element_ids"]) 
+        f_zn = self._faceSetFromNodeSet(n_zn, block["elements"], block["element_ids"]) 
+        f_zp = self._faceSetFromNodeSet(n_zp, block["elements"], block["element_ids"]) 
         # face sets
 
         mesh_dict = {"Name": name,
@@ -185,14 +191,19 @@ class Mesher(object):
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {"n_xn": n_xn,
-                                  "n_xp": n_xp,
-                                  "n_yn": n_yn,
-                                  "n_yp": n_yp,
-                                  "n_zn": n_zn,
-                                  "n_zp": n_zp},
+                     "NodeSets": {"n_xn_"+name: n_xn,
+                                  "n_xp_"+name: n_xp,
+                                  "n_yn_"+name: n_yn,
+                                  "n_yp_"+name: n_yp,
+                                  "n_zn_"+name: n_zn,
+                                  "n_zp_"+name: n_zp},
                      "ElementSets": {"e_"+name: block["element_ids"]},
-                     "FaceSets": {}}
+                     "FaceSets": {"f_xn_"+name: f_xn,
+                                  "f_xp_"+name: f_xp,
+                                  "f_yn_"+name: f_yn,
+                                  "f_yp_"+name: f_yp,
+                                  "f_zn_"+name: f_zn,
+                                  "f_zp_"+name: f_zp}}
 
         self.meshes.append(mesh_dict)
 
@@ -312,14 +323,35 @@ class Mesher(object):
             blockList[i+1] = self._interpCylindrical(b, r_major, r_minor, block_angles[i], block_positions[i], 'none')
 
         block = self._mergeBlocks(blockList)
+
+        # identify elliptical surface nodes
+        residual = np.sum(block["nodes"][:,0:2]**2 / [r_major**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        # identify top and bottom surface nodes
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() - z_length / 2.0) < 1e-7).ravel()
+        n_top = block["node_ids"][ind]
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() + z_length / 2.0) < 1e-7).ravel()
+        n_bottom = block["node_ids"][ind]
+
+        # make face sets from node sets
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_top = self._faceSetFromNodeSet(n_top, block["elements"], block["element_ids"])
+        f_bottom = self._faceSetFromNodeSet(n_bottom, block["elements"], block["element_ids"])
+
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {},
-                     "ElementSets": {},
-                     "FaceSets": {}}
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_top_"+name: n_top,
+                                  "n_bottom_"+name: n_bottom},
+                     "ElementSets": {"e_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer,
+                                  "f_top_"+name: f_top,
+                                  "f_bottom_"+name: f_bottom}}
 
         self.meshes.append(mesh_dict)
 
@@ -359,6 +391,8 @@ class Mesher(object):
         -------
         Appends a half elliptic cylinder mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
         xmin = r_major * np.cos(3*np.pi/4.0)
         xmax = r_major * np.cos(np.pi/4.0)
         ymin = r_minor * np.sin(3*np.pi/4.0)
@@ -419,14 +453,41 @@ class Mesher(object):
         for i, b in enumerate(blockList[1:]):
             blockList[i+1] = self._interpCylindrical(b, r_major, r_minor, block_angles[i], block_positions[i], 'half')
         block = self._mergeBlocks(blockList)
+
+        # identify elliptical surface nodes
+        residual = np.sum(block["nodes"][:,0:2]**2 / [r_major**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        # identify back face nodes
+        ind = np.argwhere(block["nodes"][:,1] < 1e-7).ravel()
+        n_back = block["node_ids"][ind]
+
+        # identify top and bottom surface nodes
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() - z_length / 2.0) < 1e-7).ravel()
+        n_top = block["node_ids"][ind]
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() + z_length / 2.0) < 1e-7).ravel()
+        n_bottom = block["node_ids"][ind]
+
+        # make face sets from node sets
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_top = self._faceSetFromNodeSet(n_top, block["elements"], block["element_ids"])
+        f_bottom = self._faceSetFromNodeSet(n_bottom, block["elements"], block["element_ids"])
+        f_back = self._faceSetFromNodeSet(n_back, block["elements"], block["element_ids"])
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {},
-                     "ElementSets": {},
-                     "FaceSets": {}}
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_back_"+name: n_back,
+                                  "n_top_"+name: n_top,
+                                  "n_bottom_"+name: n_bottom},
+                     "ElementSets": {"e_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer,
+                                  "f_back_"+name: f_back,
+                                  "f_top_"+name: f_top,
+                                  "f_bottom_"+name: f_bottom}}
 
         self.meshes.append(mesh_dict)
 
@@ -465,6 +526,8 @@ class Mesher(object):
         -------
         Appends an elliptic cylinder mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
         xmax = r_major * np.cos(np.pi/4.0)
         ymax = r_minor * np.sin(np.pi/4.0)
         xright = r_minor / 2.0 - ymax + xmax
@@ -511,14 +574,48 @@ class Mesher(object):
         for i, b in enumerate(blockList[1:]):
             blockList[i+1] = self._interpCylindrical(b, r_major, r_minor, block_angles[i], block_positions[i], 'quarter')
         block = self._mergeBlocks(blockList)
+
+        # identify elliptical surface nodes
+        residual = np.sum(block["nodes"][:,0:2]**2 / [r_major**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        # identify back face nodes
+        ind = np.argwhere(block["nodes"][:,1] < 1e-7).ravel()
+        n_back = block["node_ids"][ind]
+
+        # identify left face nodes
+        ind = np.argwhere(block["nodes"][:,0] < 1e-7).ravel()
+        n_left = block["node_ids"][ind]
+
+        # identify top and bottom surface nodes
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() - z_length / 2.0) < 1e-7).ravel()
+        n_top = block["node_ids"][ind]
+        ind = np.argwhere(np.abs(block["nodes"][:,2].ravel() + z_length / 2.0) < 1e-7).ravel()
+        n_bottom = block["node_ids"][ind]
+
+        # make face sets from node sets
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_top = self._faceSetFromNodeSet(n_top, block["elements"], block["element_ids"])
+        f_bottom = self._faceSetFromNodeSet(n_bottom, block["elements"], block["element_ids"])
+        f_back = self._faceSetFromNodeSet(n_back, block["elements"], block["element_ids"])
+        f_left = self._faceSetFromNodeSet(n_left, block["elements"], block["element_ids"])
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {},
-                     "ElementSets": {},
-                     "FaceSets": {}}
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_back_"+name: n_back,
+                                  "n_left_"+name: n_left,
+                                  "n_top_"+name: n_top,
+                                  "n_bottom_"+name: n_bottom},
+                     "ElementSets": {"e_"+name: block["element_ids"]},
+                     "NodeSets": {"f_outer_"+name: f_outer,
+                                  "f_back_"+name: f_back,
+                                  "f_left_"+name: f_left,
+                                  "f_top_"+name: f_top,
+                                  "f_bottom_"+name: f_bottom}}
 
         self.meshes.append(mesh_dict)
 
@@ -635,20 +732,28 @@ class Mesher(object):
                                          x_div=2*ix,
                                          y_div=bfy,
                                          z_div=2*iz))
+
         cases = ["top", "bottom", "left", "right", "back", "front"]
         for i, b in enumerate(blockList[1:]):
             blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="none")
 
         block = self._mergeBlocks(blockList)
 
+        # identify surface nodes
+        residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {},
-                     "ElementSets": {},
-                     "FaceSets": {}}
+                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "ElementSets": {"e_all_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer}}
 
         self.meshes.append(mesh_dict)
 
@@ -933,26 +1038,29 @@ class Mesher(object):
                      "element_ids": blockList[0]["element_ids"].ravel()}
         for b in blockList[1:]:
             new_block["nodes"] = np.vstack((new_block["nodes"], b["nodes"]))
-            new_block["elements"] = np.vstack((new_block["elements"], b["elements"] + new_block["node_ids"][-1]))
-            new_block["node_ids"] = np.concatenate((new_block["node_ids"], b["node_ids"] + new_block["node_ids"][-1])).ravel()
-            new_block["element_ids"] = np.concatenate((new_block["element_ids"], b["element_ids"] + new_block["element_ids"][-1])).ravel()
+            new_block["elements"] = np.vstack((new_block["elements"], b["elements"] + new_block["node_ids"].size))
+            new_block["node_ids"] = np.concatenate((new_block["node_ids"], b["node_ids"] + new_block["node_ids"].size)).ravel()
+            new_block["element_ids"] = np.concatenate((new_block["element_ids"], b["element_ids"] + new_block["element_ids"].size)).ravel()
 
         # build a KD-tree to quickly find coincident nodes
         tree = cKDTree(new_block["nodes"])
-        remove = tree.query_pairs(tol, output_type='ndarray') + 1
-        updateMap = dict(zip(range(1, new_block["node_ids"].size + 1), range(1, new_block["node_ids"].size + 1)))
+        remove = tree.query_pairs(tol, output_type='ndarray') + new_block["node_ids"][0]
+        updateMap = dict(zip(range(new_block["node_ids"][0], new_block["node_ids"][0] + new_block["node_ids"].size),
+                             new_block["node_ids"]))
         for i in xrange(remove.shape[0]):
             if remove[i,0] < updateMap[remove[i,1]]:
                 updateMap[remove[i,1]] = remove[i,0]
         updateFunc = lambda k: updateMap.get(k, -1)
         new_block["elements"] = np.vectorize(updateFunc)(new_block["elements"])
+
+        ns = new_block["node_ids"][0]
         unique_nodes = np.unique(np.array(updateMap.values()))
-        new_block["nodes"] = new_block["nodes"][unique_nodes - 1, :]
-        listOfNodes = range(1, unique_nodes.shape[0] + 1)
+        new_block["nodes"] = new_block["nodes"][unique_nodes - ns, :]
+        listOfNodes = range(unique_nodes.shape[0]) + ns
         updateMap = dict(zip(sorted(unique_nodes), listOfNodes))
         new_block["elements"] = np.vectorize(updateFunc)(new_block["elements"])
         new_block["node_ids"] = np.array(listOfNodes)
-        new_block["element_ids"] = np.arange(new_block["elements"].shape[0]) + 1
+        new_block["element_ids"] = np.arange(new_block["elements"].shape[0]) + new_block["element_ids"][0]
         return new_block
 
     def _findProjectionDirection(self, points, case):
@@ -987,8 +1095,29 @@ class Mesher(object):
         d = directions - scaled
         return directions, d / np.linalg.norm(d, axis=1).reshape(-1, 1)
 
+    def _faceSetFromNodeSet(self, nset, elements, eids):
+        ind = np.in1d(elements.ravel(), nset).reshape(-1, 8)
+        smap = {'True, True, True, True, False, False, False, False': ("S1", 0, 3, 2, 1),
+                'False, False, False, False, True, True, True, True': ("S2", 4, 5, 6, 7),
+                'True, True, False, False, True, True, False, False': ("S3", 0, 1, 5, 4),
+                'False, True, True, False, False, True, True, False': ("S4", 1, 2, 6, 5),
+                'False, False, True, True, False, False, True, True': ("S5", 2, 3, 7, 6),
+                'True, False, False, True, True, False, False, True': ("S6", 0, 4, 7, 3)}
+        fset = []
+        for i in list(np.arange(ind.shape[0])[np.any(ind, axis=1)]):
+            try:
+                fset.append([eids[i], smap[', '.join(map(str,ind[i]))]])
+            except:
+                print elements[i] 
+        return fset
 
-    def applyRigidTransform(self, mesh_index=None, **kwargs):
+
+    def applyRigidTransform(self, mesh_index=None, translation=[0.0, 0.0, 0.0],
+                            method="angles",
+                            q=np.eye(3),
+                            rx=0.0,
+                            ry=0.0,
+                            rz=0.0):
         r"""
         Applies a rigid transformation to the mesh indicated by its index.
         Specify rotations either by a matrix or as x, y, and z rotation angles (degrees).
@@ -1003,8 +1132,8 @@ class Mesher(object):
         method : str="angles", optional
             "angles" : use rotation angles
             "matrix" : use rotation matrix
-        rot_matrix : ndarray((3,3), dtype=float), optional
-            If unspecified defaults to identity.
+        q: ndarray((3,3), dtype=float), optional
+            The rotation matrix. If unspecified defaults to identity.
         rx : float=0.0
             x rotation angle (degrees)
         ry : float=0.0
@@ -1016,7 +1145,11 @@ class Mesher(object):
         -------
         Modifies mesh nodal coordinates for specified *meshes* item.
         """
-        pass
+        if method == "angles":
+            pass
+
+        self.meshes[mesh_index]["Nodes"] = np.dot(np.array(q), self.meshes[mesh_index]["Nodes"].T).T
+        self.meshes[mesh_index]["Nodes"] += np.array(translation)
 
 
     def defineNodeSet(self, mesh_index=None, **kwargs):
@@ -1119,17 +1252,22 @@ class Mesher(object):
                         m["Elements"][i, 6],
                         m["Elements"][i, 7]))
                 for key, value in m["NodeSets"].items():
-                    fid.write("*NSET,NSET={:s}\n".format(key)),
+                    fid.write("*NSET,NSET={:s}\n".format(key))
                     split = np.array_split(value, np.ceil(value.shape[0] / 10.0))
                     for s in split:
                         for i in xrange(s.shape[0]):
                             fid.write("{:d},".format(s[i]))
                         fid.write("\n")
                 for key, value in m["ElementSets"].items():
-                    fid.write("*ELSET,ELSET={:s}\n".format(key)),
+                    fid.write("*ELSET,ELSET={:s}\n".format(key))
                     split = np.array_split(value, np.ceil(value.shape[0] / 10.0))
                     for s in split:
                         for i in xrange(s.shape[0]):
                             fid.write("{:d},".format(s[i]))
                         fid.write("\n")
+                for key, value in m["FaceSets"].items():
+                    fid.write("*SURFACE,NAME={:s}\n".format(key))
+                    for v in value:
+                        fid.write("{:d},{:s}\n".format(v[0], v[1][0]))
+                fid.write("*END PART\n")
         fid.close()
