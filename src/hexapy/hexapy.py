@@ -624,7 +624,7 @@ class Mesher(object):
                       r_major_div=10, r_middle_div=10, r_minor_div=10,
                       r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
-        Create a sphere.
+        Create a ellipsoid.
 
         Parameters
         ----------
@@ -757,102 +757,355 @@ class Mesher(object):
 
         self.meshes.append(mesh_dict)
 
-    def makeHalfSphere(self, **kwargs):
+    def makeHalfEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
+                          r_major_div=10, r_middle_div=10, r_minor_div=10,
+                          r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
-        Create a half-sphere.
+        Create a half-ellipsoid.
 
         Parameters
         ----------
         name : str, optional
             Name identifier for mesh. Defaults to "Part {:s}".format(index in meshes)
-        r : float 1.0, optional
-            Radius of sphere
-        r_div : int 10, optional
-            Number of element divisions in the radial direction
-        r_edge : float=-1.0, optional
-            Overrides *r_div* with absolute radial edge length (ignored if non-positive)
-        subset : str="zn", optional
-            Subset of sphere to mesh.
-            "xn" : negative x
-            "xp" : positive x
-            "yn" : negative y
-            "yp" : positive y
-            "zn" : negative z
-            "zp" : positive z
+        r_major : float 1.0, optional
+            Major radius of ellipsoid
+        r_middle : float 1.0, optional
+            Middle radius of ellipsoid
+        r_minor : float 1.0, optional
+            Minor radius of ellipsoid
+        r_major_div : int 10, optional
+            Number of element divisions in the major radial direction
+        r_middle_div : int 10, optional
+            Number of element divisions in the middle radial direction
+        r_minor_div : int 10, optional
+            Number of element divisions in the minor radial direction
+        r_major_edge : float=-1.0, optional
+            Overrides *r_major_div* with absolute radial edge length (ignored if non-positive)
+        r_middle_edge : float=-1.0, optional
+            Overrides *r_middle_div* with absolute radial edge length (ignored if non-positive)
+        r_minor_edge : float=-1.0, optional
+            Overrides *r_minor_div* with absolute radial edge length (ignored if non-positive)
 
         Returns
         -------
-        Appends a half-sphere mesh definition to *meshes*.
+        Appends an ellipsoidal mesh definition to *meshes*.
         """
-        pass
+        prop = (np.pi / 48.0)**(1. / 3.)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(np.ceil(r_middle_div * prop))
+        iz = int(r_minor_div * prop)
+        bfx = int(np.ceil(r_major_div * (1-prop)))
+        bfy = int(np.ceil(r_middle_div * (1-prop)))
+        bfz = int(np.ceil(r_minor_div * (1-prop)))
+        blockList = []
+        #middle
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=2*iy,
+                                         z_div=iz))
+        # bottom
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor,
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * (1-prop),
+                                         x_div=2*ix,
+                                         y_div=2*iy,
+                                         z_div=bfz))
+        # left
+        blockList.append(self._makeBlock(x_origin=-r_major,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=2*iy,
+                                         z_div=iz))
+        # right
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
+                                         y_origin=-r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=2 * r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=2*iy,
+                                         z_div=iz))
+        # back
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_middle,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=bfy,
+                                         z_div=iz))
+        # front
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=bfy,
+                                         z_div=iz))
+
+        cases = ["bottom", "left", "right", "back", "front"]
+        for i, b in enumerate(blockList[1:]):
+            blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="half")
+
+        block = self._mergeBlocks(blockList)
+
+        # identify surface nodes
+        residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+
+        mesh_dict = {"Name": name,
+                     "Nodes": block["nodes"],
+                     "NodeIDs": block["node_ids"],
+                     "Elements": block["elements"],
+                     "ElementIDs": block["element_ids"],
+                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "ElementSets": {"e_all_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer}}
+
+        self.meshes.append(mesh_dict)
 
 
-    def makeQuarterSphere(self, **kwargs):
+    def makeQuarterEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
+                             r_major_div=10, r_middle_div=10, r_minor_div=10,
+                             r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
-        Create a quarter-sphere.
+        Create a half-ellipsoid.
 
         Parameters
         ----------
         name : str, optional
             Name identifier for mesh. Defaults to "Part {:s}".format(index in meshes)
-        r : float 1.0, optional
-            Radius of sphere
-        r_div : int 10, optional
-            Number of element divisions in the radial direction
-        r_edge : float=-1.0, optional
-            Overrides *r_div* with absolute radial edge length (ignored if non-positive)
-        subset : str="xp_zn", optional
-            Subset of sphere to mesh.
-            "xn_yn" : negative x and negative y
-            "xn_yp" : negtive x and positive y
-            "xp_yn" : postive x and negative y
-            "xp_yp" : positive x and positive y
-            "xn_zn" : negative x and negative z
-            "xn_zp" : negative x and positive z
-            "xp_zn" : postive x and negative z
-            "xp_zp" : positive x and positive z
-            "yn_zn" : negative y and negative z
-            "yn_zp" : negative y and positive z
-            "yp_zn" : postive y and negative z
-            "yp_zp" : positive y and positive z
+        r_major : float 1.0, optional
+            Major radius of ellipsoid
+        r_middle : float 1.0, optional
+            Middle radius of ellipsoid
+        r_minor : float 1.0, optional
+            Minor radius of ellipsoid
+        r_major_div : int 10, optional
+            Number of element divisions in the major radial direction
+        r_middle_div : int 10, optional
+            Number of element divisions in the middle radial direction
+        r_minor_div : int 10, optional
+            Number of element divisions in the minor radial direction
+        r_major_edge : float=-1.0, optional
+            Overrides *r_major_div* with absolute radial edge length (ignored if non-positive)
+        r_middle_edge : float=-1.0, optional
+            Overrides *r_middle_div* with absolute radial edge length (ignored if non-positive)
+        r_minor_edge : float=-1.0, optional
+            Overrides *r_minor_div* with absolute radial edge length (ignored if non-positive)
 
         Returns
         -------
-        Appends a quarter-sphere mesh definition to *meshes*.
+        Appends an ellipsoidal mesh definition to *meshes*.
         """
-        pass
+        prop = (np.pi / 48.0)**(1. / 3.)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(np.ceil(r_middle_div * prop))
+        iz = int(r_minor_div * prop)
+        bfx = int(np.ceil(r_major_div * (1-prop)))
+        bfy = int(np.ceil(r_middle_div * (1-prop)))
+        bfz = int(np.ceil(r_minor_div * (1-prop)))
+        blockList = []
+        #middle
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=iy,
+                                         z_div=iz))
+        # bottom
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * (1-prop),
+                                         x_div=2*ix,
+                                         y_div=iy,
+                                         z_div=bfz))
+        # left
+        blockList.append(self._makeBlock(x_origin=-r_major,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=iy,
+                                         z_div=iz))
+        # right
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=iy,
+                                         z_div=iz))
+        # front
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=r_minor * prop,
+                                         x_div=2*ix,
+                                         y_div=bfy,
+                                         z_div=iz))
+
+        cases = ["bottom", "left", "right", "front"]
+        for i, b in enumerate(blockList[1:]):
+            blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="quarter")
+
+        block = self._mergeBlocks(blockList)
+
+        # identify surface nodes
+        residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+
+        mesh_dict = {"Name": name,
+                     "Nodes": block["nodes"],
+                     "NodeIDs": block["node_ids"],
+                     "Elements": block["elements"],
+                     "ElementIDs": block["element_ids"],
+                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "ElementSets": {"e_all_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer}}
+
+        self.meshes.append(mesh_dict)
 
 
-    def makeEighthSphere(self, **kwargs):
+    def makeQuarterEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
+                             r_major_div=10, r_middle_div=10, r_minor_div=10,
+                             r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
-        Create an eighth-sphere.
+        Create a half-ellipsoid.
 
         Parameters
         ----------
         name : str, optional
             Name identifier for mesh. Defaults to "Part {:s}".format(index in meshes)
-        r : float 1.0, optional
-            Radius of sphere
-        r_div : int 10, optional
-            Number of element divisions in the radial direction
-        r_edge : float=-1.0, optional
-            Overrides *r_div* with absolute radial edge length (ignored if non-positive)
-        subset : str="xp_yp_zn", optional
-            Subset of sphere to mesh.
-            "xn_yn_zn" : negative x and negative y negative z
-            "xn_yn_zp" : negative x and negative y positive z
-            "xn_yp_zn" : negative x and positive y negative z
-            "xn_yp_zp" : negative x and positive y positive z
-            "xp_yn_zn" : positive x and negative y negative z
-            "xp_yn_zp" : positive x and negative y positive z
-            "xp_yp_zn" : positive x and positive y negative z
-            "xp_yp_zp" : positive x and positive y positive z
+        r_major : float 1.0, optional
+            Major radius of ellipsoid
+        r_middle : float 1.0, optional
+            Middle radius of ellipsoid
+        r_minor : float 1.0, optional
+            Minor radius of ellipsoid
+        r_major_div : int 10, optional
+            Number of element divisions in the major radial direction
+        r_middle_div : int 10, optional
+            Number of element divisions in the middle radial direction
+        r_minor_div : int 10, optional
+            Number of element divisions in the minor radial direction
+        r_major_edge : float=-1.0, optional
+            Overrides *r_major_div* with absolute radial edge length (ignored if non-positive)
+        r_middle_edge : float=-1.0, optional
+            Overrides *r_middle_div* with absolute radial edge length (ignored if non-positive)
+        r_minor_edge : float=-1.0, optional
+            Overrides *r_minor_div* with absolute radial edge length (ignored if non-positive)
 
         Returns
         -------
-        Appends an eighth-sphere mesh definition to *meshes*.
+        Appends an ellipsoidal mesh definition to *meshes*.
         """
-        pass
+        prop = (np.pi / 48.0)**(1. / 3.)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(np.ceil(r_middle_div * prop))
+        iz = int(r_minor_div * prop)
+        bfx = int(np.ceil(r_major_div * (1-prop)))
+        bfy = int(np.ceil(r_middle_div * (1-prop)))
+        bfz = int(np.ceil(r_minor_div * (1-prop)))
+        blockList = []
+        #middle
+        blockList.append(self._makeBlock(x_origin=0.0,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor * prop,
+                                         x_length=r_major * prop,
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=ix,
+                                         y_div=iy,
+                                         z_div=iz))
+        # bottom
+        blockList.append(self._makeBlock(x_origin=0.0,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor,
+                                         x_length=r_major * prop,
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * (1-prop),
+                                         x_div=ix,
+                                         y_div=iy,
+                                         z_div=bfz))
+        # right
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
+                                         y_origin=0.0,
+                                         z_origin=-r_minor * prop,
+                                         x_length= r_major * (1-prop),
+                                         y_length=r_middle * prop,
+                                         z_length=r_minor * prop,
+                                         x_div=bfx,
+                                         y_div=iy,
+                                         z_div=iz))
+        # front
+        blockList.append(self._makeBlock(x_origin=0.0,
+                                         y_origin=r_middle * prop,
+                                         z_origin=-r_minor * prop,
+                                         x_length=r_major * prop,
+                                         y_length=r_middle * (1-prop),
+                                         z_length=r_minor * prop,
+                                         x_div=ix,
+                                         y_div=bfy,
+                                         z_div=iz))
+
+        cases = ["bottom", "right", "front"]
+        for i, b in enumerate(blockList[1:]):
+            blockList[i+1] = self._interpSpherical(b, r_major, r_middle, r_minor, case=cases[i], sym="eighth")
+
+        block = self._mergeBlocks(blockList)
+
+        # identify surface nodes
+        residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
+        ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
+        n_outer = block["node_ids"][ind]
+
+        f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+
+        mesh_dict = {"Name": name,
+                     "Nodes": block["nodes"],
+                     "NodeIDs": block["node_ids"],
+                     "Elements": block["elements"],
+                     "ElementIDs": block["element_ids"],
+                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "ElementSets": {"e_all_"+name: block["element_ids"]},
+                     "FaceSets": {"f_outer_"+name: f_outer}}
+
+        self.meshes.append(mesh_dict)
 
     def _interpCylindrical(self, block, a, b, t, case, sym):
         r"""
@@ -965,7 +1218,7 @@ class Mesher(object):
         """
 
         # find direction vectors for projection to ellipsoid
-        p, v = self._findProjectionDirection(block["nodes"], case)
+        p, v = self._findProjectionDirection(block["nodes"], case, sym)
         # the intersection of each ray with the ellipsoid is the solution to a quadratic
         # ray: p[0] = p_0[0] + v[0]*t, p[1] = p_0[1] + v[1]*t, p[2] = p_0[2] + v[2]*t
         # ellipsoid: p[0]**2 / a**2 + p[1]**2 / b**2 + p[2]**2 / c**2 = 1
@@ -1063,15 +1316,21 @@ class Mesher(object):
         new_block["element_ids"] = np.arange(new_block["elements"].shape[0]) + new_block["element_ids"][0]
         return new_block
 
-    def _findProjectionDirection(self, points, case):
+    def _findProjectionDirection(self, points, case, sym):
         directions = np.copy(points)
         mins  = np.min(directions, 0)
         maxes = np.max(directions, 0)
-        h = np.min(np.abs(np.vstack((mins, maxes))), 0)
+        h = np.max(np.abs(np.vstack((mins, maxes))), 0)
         l = maxes - mins
         t45 = np.tan(np.pi / 4.0)
         x = h / t45
         r = 1.0 - 2 * x / l
+        if sym == "half":
+            r[2] += x[2] / l[2] 
+        elif sym == "quarter":
+            r[1:] += x[1:] / l[1:] 
+        elif sym == "eighth":
+            r += x / l
         scaled = points * r
         if case == "top":
             directions[:,2] = mins[2]
@@ -1146,7 +1405,19 @@ class Mesher(object):
         Modifies mesh nodal coordinates for specified *meshes* item.
         """
         if method == "angles":
-            pass
+            rx = np.radians(rx)
+            ry = np.radians(ry)
+            rz = np.radians(rz)
+            qx = np.array([[1.0, 0.0, 0.0],
+                           [0.0, np.cos(rx), -np.sin(rx)],
+                           [0.0, np.sin(rx), np.cos(rx)]])
+            qy = np.array([[np.cos(ry), 0.0, np.sin(ry)],
+                           [0.0, 1.0, 0.0],
+                           [-np.sin(ry), 0.0, np.cos(ry)]])
+            qz = np.array([[np.cos(rz), -np.sin(rz), 0.0],
+                           [np.sin(rz), np.cos(rz), 0.0],
+                           [0.0, 0.0, 1.0]])
+            q = np.dot(qz, np.dot(qy, qx))
 
         self.meshes[mesh_index]["Nodes"] = np.dot(np.array(q), self.meshes[mesh_index]["Nodes"].T).T
         self.meshes[mesh_index]["Nodes"] += np.array(translation)
