@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.abspath('../src/'))
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.pngmath',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon'
 ]
