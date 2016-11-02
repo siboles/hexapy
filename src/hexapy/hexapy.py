@@ -4,10 +4,10 @@ import itertools
 import string
 
 class Mesher(object):
+
     def __init__(self):
         r"""
         This class provides functionality for creating hexahedral meshes of primitives.
-
 
         Attributes
         ----------
@@ -869,17 +869,23 @@ class Mesher(object):
         residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
         ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
         n_outer = block["node_ids"][ind]
+        # top plane
+        ind = np.argwhere(np.abs(block["nodes"][:,2]) < 1e-7).ravel()
+        n_zp = block["node_ids"][ind]
 
         f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_zp = self._faceSetFromNodeSet(n_zp, block["elements"], block["element_ids"])
 
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_zp_"+name: n_zp},
                      "ElementSets": {"e_all_"+name: block["element_ids"]},
-                     "FaceSets": {"f_outer_"+name: f_outer}}
+                     "FaceSets": {"f_outer_"+name: f_outer,
+                                  "f_zp_"+name: f_zp}}
 
         self.meshes.append(mesh_dict)
 
@@ -986,22 +992,34 @@ class Mesher(object):
         residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
         ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
         n_outer = block["node_ids"][ind]
+        # top plane
+        ind = np.argwhere(np.abs(block["nodes"][:,2]) < 1e-7).ravel()
+        n_zp = block["node_ids"][ind]
+        # negative y plane
+        ind = np.argwhere(np.abs(block["nodes"][:,1]) < 1e-7).ravel()
+        n_yn = block["node_ids"][ind]
 
         f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_zp = self._faceSetFromNodeSet(n_zp, block["elements"], block["element_ids"])
+        f_yn = self._faceSetFromNodeSet(n_yn, block["elements"], block["element_ids"])
 
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_zp_"+name: n_zp,
+                                  "n_yn_"+name: n_yn},
                      "ElementSets": {"e_all_"+name: block["element_ids"]},
-                     "FaceSets": {"f_outer_"+name: f_outer}}
+                     "FaceSets": {"f_outer_"+name: f_outer,
+                                  "f_zp_"+name: f_zp,
+                                  "f_yn_"+name: f_yn}}
 
         self.meshes.append(mesh_dict)
 
 
-    def makeQuarterEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
+    def makeEighthEllipsoid(self, name=None, r_major=1.0, r_middle=1.0, r_minor=1.0,
                              r_major_div=10, r_middle_div=10, r_minor_div=10,
                              r_major_edge=-1.0, r_middle_edge=-1.0, r_minor_edge=-1.0):
         r"""
@@ -1093,17 +1111,35 @@ class Mesher(object):
         residual = np.sum(block["nodes"]**2 / [r_major**2, r_middle**2, r_minor**2], axis=1) - 1.0
         ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
         n_outer = block["node_ids"][ind]
+        # top plane
+        ind = np.argwhere(np.abs(block["nodes"][:,2]) < 1e-7).ravel()
+        n_zp = block["node_ids"][ind]
+        # negative y plane
+        ind = np.argwhere(np.abs(block["nodes"][:,1]) < 1e-7).ravel()
+        n_yn = block["node_ids"][ind]
+        # negative x plane
+        ind = np.argwhere(np.abs(block["nodes"][:,0]) < 1e-7).ravel()
+        n_xn = block["node_ids"][ind]
 
         f_outer = self._faceSetFromNodeSet(n_outer, block["elements"], block["element_ids"])
+        f_zp = self._faceSetFromNodeSet(n_zp, block["elements"], block["element_ids"])
+        f_yn = self._faceSetFromNodeSet(n_yn, block["elements"], block["element_ids"])
+        f_xn = self._faceSetFromNodeSet(n_xn, block["elements"], block["element_ids"])
 
         mesh_dict = {"Name": name,
                      "Nodes": block["nodes"],
                      "NodeIDs": block["node_ids"],
                      "Elements": block["elements"],
                      "ElementIDs": block["element_ids"],
-                     "NodeSets": {"n_outer_"+name: n_outer},
+                     "NodeSets": {"n_outer_"+name: n_outer,
+                                  "n_zp_"+name: n_zp,
+                                  "n_yn_"+name: n_yn,
+                                  "n_xn_"+name: n_xn},
                      "ElementSets": {"e_all_"+name: block["element_ids"]},
-                     "FaceSets": {"f_outer_"+name: f_outer}}
+                     "FaceSets": {"f_outer_"+name: f_outer,
+                                  "f_zp_"+name: f_zp,
+                                  "f_yn_"+name: f_yn,
+                                  "f_xn_"+name: f_xn}}
 
         self.meshes.append(mesh_dict)
 
@@ -1381,9 +1417,7 @@ class Mesher(object):
         Applies a rigid transformation to the mesh indicated by its index.
         Specify rotations either by a matrix or as x, y, and z rotation angles (degrees).
 
-        .. note::
-
-        When using angles, the order of application is x then y then z.
+        Note: When using angles, the order of application is x then y then z.
 
         Parameters
         ----------
@@ -1493,9 +1527,8 @@ class Mesher(object):
             If provided, this will write the mesh to file. Currently, Abaqus (.inp) and VTK (.vtu)
             formats are supported. The format will be deduced by the file extension unless overridden
             by *format* parameter. If no filename is specified the mesh will be stored in memory.
-        file_format : str="file", optional
+        file_format : str="abaqus", optional
             File format to save mesh in.
-                * "file": determine from extension
                 * "vtk": use VTK format
                 * "abaqus": use Abaqus format
         """
