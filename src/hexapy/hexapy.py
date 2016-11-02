@@ -4,7 +4,6 @@ import itertools
 import string
 
 class Mesher(object):
-
     def __init__(self):
         r"""
         This class provides functionality for creating hexahedral meshes of primitives.
