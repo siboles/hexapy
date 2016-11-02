@@ -1,0 +1,26 @@
+package:
+  name: hexapy
+  version: 0.0 
+
+source:
+  git_url: https://github.com/siboles/hexapy.git
+  git_rev: 0.0.1
+
+requirements:
+  build:
+    - python
+    - numpy
+    - scipy
+  run:
+    - python
+    - numpy
+    - scipy
+
+test:
+  imports:
+    - hexapy
+
+about:
+  home: https://github.com/siboles/hexapy
+  summary: 'Provides tools for easy generation of 8-node hexahedral meshes intended for finite element analysis'
+  license: GPL
