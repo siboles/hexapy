@@ -21,12 +21,11 @@ import sys
 from mock import Mock as MagicMock
 
 class Mock(MagicMock):
-    __all__ = []
     @classmethod
     def __getattr__(cls, name):
         return Mock()
 
-MOCK_MODULES = ['numpy*', 'scipy.spatial']
+MOCK_MODULES = ['numpy', 'scipy.spatial']
 
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
