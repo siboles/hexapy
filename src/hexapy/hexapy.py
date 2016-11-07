@@ -1,12 +1,14 @@
+import string
 import numpy as np
 from scipy.spatial import cKDTree
-import itertools
-import string
 
 class Mesher(object):
+    """
+    This class provides functionality for creating hexahedral meshes of primitives.
+    """
+
     def __init__(self):
         r"""
-        This class provides functionality for creating hexahedral meshes of primitives.
 
         Attributes
         ----------
@@ -38,24 +40,21 @@ class Mesher(object):
         self._coordinates = []
 
     def _makeBlock(self,
-                  x_origin,
-                  y_origin,
-                  z_origin,
-                  x_length,
-                  y_length,
-                  z_length,
-                  x_div,
-                  y_div,
-                  z_div):
+                   x_origin,
+                   y_origin,
+                   z_origin,
+                   x_length,
+                   y_length,
+                   z_length,
+                   x_div,
+                   y_div,
+                   z_div):
         block = {}
         # start numbering nodes from last node id in last appended mesh + 1
         if len(self.meshes) > 0:
             node_start = self.meshes[-1]["NodeIDs"][-1] + 1
         else:
             node_start = 1
-        halfx = x_length / 2.0
-        halfy = y_length / 2.0
-        halfz = z_length / 2.0
 
         x = np.linspace(x_origin, x_origin + x_length, x_div)
         y = np.linspace(y_origin, y_origin + y_length, y_div)
@@ -215,8 +214,7 @@ class Mesher(object):
                      z_div=10,
                      r_major_edge=-1.0,
                      r_minor_edge=-1.0,
-                     z_edge=-1.0
-    ):
+                     z_edge=-1.0):
         r"""
         Create an elliptic cylinder.
 
@@ -249,6 +247,18 @@ class Mesher(object):
         """
         if name is None:
             name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
+        if z_edge > 0:
+            if z_edge > z_length:
+                raise SystemExit("z_edge must be less than z_length")
+            z_div = np.ceil(z_length / z_edge)
 
         xmin = r_major * np.cos(3*np.pi/4.0)
         xmax = r_major * np.cos(np.pi/4.0)
@@ -392,6 +402,19 @@ class Mesher(object):
         """
         if name is None:
             name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
+        if z_edge > 0:
+            if z_edge > z_length:
+                raise SystemExit("z_edge must be less than z_length")
+            z_div = np.ceil(z_length / z_edge)
+
         xmin = r_major * np.cos(3*np.pi/4.0)
         xmax = r_major * np.cos(np.pi/4.0)
         ymin = r_minor * np.sin(3*np.pi/4.0)
@@ -527,6 +550,19 @@ class Mesher(object):
         """
         if name is None:
             name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
+        if z_edge > 0:
+            if z_edge > z_length:
+                raise SystemExit("z_edge must be less than z_length")
+            z_div = np.ceil(z_length / z_edge)
+
         xmax = r_major * np.cos(np.pi/4.0)
         ymax = r_minor * np.sin(np.pi/4.0)
         xright = r_minor / 2.0 - ymax + xmax
@@ -652,6 +688,20 @@ class Mesher(object):
         -------
         Appends an ellipsoidal mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_middle_edge > 0:
+            if r_middle_edge > r_middle:
+                raise SystemExit("r_middle_edge must be less than r_middle")
+            r_middle_div = np.ceil(r_middle / r_middle_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
 
         prop = (np.pi / 48.0)**(1. / 3.)
         ix = int(np.ceil(r_major_div * prop))
@@ -789,6 +839,20 @@ class Mesher(object):
         -------
         Appends an ellipsoidal mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_middle_edge > 0:
+            if r_middle_edge > r_middle:
+                raise SystemExit("r_middle_edge must be less than r_middle")
+            r_middle_div = np.ceil(r_middle / r_middle_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
         prop = (np.pi / 48.0)**(1. / 3.)
         ix = int(np.ceil(r_major_div * prop))
         iy = int(np.ceil(r_middle_div * prop))
@@ -922,6 +986,20 @@ class Mesher(object):
         -------
         Appends an ellipsoidal mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_middle_edge > 0:
+            if r_middle_edge > r_middle:
+                raise SystemExit("r_middle_edge must be less than r_middle")
+            r_middle_div = np.ceil(r_middle / r_middle_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
         prop = (np.pi / 48.0)**(1. / 3.)
         ix = int(np.ceil(r_major_div * prop))
         iy = int(np.ceil(r_middle_div * prop))
@@ -1051,6 +1129,20 @@ class Mesher(object):
         -------
         Appends an ellipsoidal mesh definition to *meshes*.
         """
+        if name is None:
+            name = "Part_{:d}".format(len(self.meshes) + 1)
+        if r_major_edge > 0:
+            if r_major_edge > r_major:
+                raise SystemExit("r_major_edge must be less than r_major")
+            r_major_div = np.ceil(r_major / r_major_edge)
+        if r_middle_edge > 0:
+            if r_middle_edge > r_middle:
+                raise SystemExit("r_middle_edge must be less than r_middle")
+            r_middle_div = np.ceil(r_middle / r_middle_edge)
+        if r_minor_edge > 0:
+            if r_minor_edge > r_minor:
+                raise SystemExit("r_minor_edge must be less than r_minor")
+            r_minor_div = np.ceil(r_minor / r_minor_edge)
         prop = (np.pi / 48.0)**(1. / 3.)
         ix = int(np.ceil(r_major_div * prop))
         iy = int(np.ceil(r_middle_div * prop))
