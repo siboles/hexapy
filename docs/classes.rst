@@ -7,6 +7,8 @@ The autodocumentation for the hexapy module is provided below.
    :maxdepth: 1
    :glob:
 
+   *.rst
+
 .. automodule:: hexapy
    :members: Mesher
    :special-members:
