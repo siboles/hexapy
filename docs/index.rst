@@ -15,8 +15,24 @@ Contents:
    introduction
    classes
 
-hexapy is a Python module providing tools for easy generation of 8-node hexahedral meshes for simple geometries.
+hexapy is a Python module providing tools for easy generation of 8-node hexahedral meshes for simple geometries. Currently supported geometries include:
 
+* box
+
+* ellipsoid
+* half-ellipsoid
+* quarter-ellipsoid
+* eighth-ellipsoid
+
+* elliptical cylinder
+* half-elliptical cylinder
+* quarter-elliptical cylinder
+
+Element divisions or edge length can be set for each principal direction. Default sets are generated for elements, nodes, and faces. Additional sets can be defined by the user.
+
+An assembly of meshes will be constructed with repeated calls to mesh generation functions. Each mesh in the assembly can be rigidly transformed to appropriately position and orient it in the assembly.
+
+Currently, the meshes can be written in Abaqus format. The module will be extended to support additional formats in the future.
 
 Indices and tables
 ==================
