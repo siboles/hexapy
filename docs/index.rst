@@ -11,6 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   installation
+   introduction
    classes
 
 hexapy is a Python module providing tools for easy generation of 8-node hexahedral meshes for simple geometries.
