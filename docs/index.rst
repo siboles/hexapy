@@ -6,6 +6,9 @@
 Welcome to hexapy's documentation!
 ==================================
 
+.. image:: logo.png
+   :align: center
+
 Contents:
 
 .. toctree::
