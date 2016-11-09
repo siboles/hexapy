@@ -54,6 +54,7 @@ Example 2 - An assembly
    #write transformed mesh to file
    mesh.writeToFile(filename="assembly.inp", file_format="abaqus")
 
+
 .. figure:: ./img/assembly.png
    :align: center
 
