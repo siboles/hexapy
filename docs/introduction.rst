@@ -55,7 +55,7 @@ Example 2 - An assembly
    mesh.writeToFile(filename="assembly.inp", file_format="abaqus")
 
 
-.. figure:: ./img/.png
+.. figure:: ./img/assembly.png
    :align: center
 
    The resulting assembly of ellipsoidal and box meshes from the example 2 code.
