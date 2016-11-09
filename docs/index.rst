@@ -6,7 +6,7 @@
 Welcome to hexapy's documentation!
 ==================================
 
-.. image:: logo.png
+.. image:: ./img/logo.png
    :align: center
 
 Contents:
