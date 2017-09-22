@@ -260,66 +260,62 @@ class Mesher(object):
                 raise SystemExit("z_edge must be less than z_length")
             z_div = np.ceil(z_length / z_edge)
 
-        xmin = r_major * np.cos(3*np.pi/4.0)
-        xmax = r_major * np.cos(np.pi/4.0)
-        ymin = r_minor * np.sin(3*np.pi/4.0)
-        ymax = r_minor * np.sin(np.pi/4.0)
-        xleft = xmin + ymin - r_minor / 2.0
-        xright = r_minor / 2.0 - ymax + xmax
-        inner_divx = int(np.ceil((xright - xleft) / r_major * r_major_div))
-        outer_divx = np.ceil(2.0*r_major_div - inner_divx)
-        outer_divy = np.ceil(r_minor / 2.0 * r_minor_div)
-        outer_div = int(np.ceil((outer_divx + outer_divy) / 2.0))
+        #this proportion results in half area as inner square
+        prop = np.sqrt(np.pi / 12.0)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(r_minor_div * prop)
+        divs = np.max([np.ceil(r_major_div * (1-prop)), np.ceil(r_minor_div*(1-prop))])
+        bfdiv = int(divs)
         blockList = []
         # middle block
-        blockList.append(self._makeBlock(x_origin=xleft,
-                                         y_origin=-r_minor / 2.0,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=-r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright - xleft,
-                                         y_length=r_minor,
+                                         x_length=2 * r_major * prop,
+                                         y_length=2 * r_minor * prop,
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=r_minor_div,
+                                         x_div=2*ix,
+                                         y_div=2*iy,
                                          z_div=z_div))
         # left block
         blockList.append(self._makeBlock(x_origin=-r_major,
-                                         y_origin=-r_minor / 2.0,
+                                         y_origin=-r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=r_major + xleft,
-                                         y_length=r_minor,
+                                         x_length=r_major * (1-prop),
+                                         y_length=2 * r_minor * prop,
                                          z_length=z_length,
-                                         x_div=outer_div,
-                                         y_div=r_minor_div,
+                                         x_div=bfdiv,
+                                         y_div=2*iy,
                                          z_div=z_div))
         # right block
-        blockList.append(self._makeBlock(x_origin=xright,
-                                         y_origin=-r_minor / 2.0,
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
+                                         y_origin=-r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=r_major - xright,
-                                         y_length=r_minor,
+                                         x_length=r_major * (1-prop),
+                                         y_length=2 * r_minor * prop,
                                          z_length=z_length,
-                                         x_div=outer_div,
-                                         y_div=r_minor_div,
+                                         x_div=bfdiv,
+                                         y_div=2*iy,
                                          z_div=z_div))
         # top block
-        blockList.append(self._makeBlock(x_origin=xleft,
-                                         y_origin=r_minor / 2.0,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright - xleft,
-                                         y_length=r_minor / 2.0,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_minor * (1-prop),
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=outer_div,
+                                         x_div=2*ix,
+                                         y_div=bfdiv,
                                          z_div=z_div))
         # bottom block
-        blockList.append(self._makeBlock(x_origin=xleft,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
                                          y_origin=-r_minor,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright - xleft,
-                                         y_length=r_minor / 2.0,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_minor * (1-prop),
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=outer_div,
+                                         x_div=2 * ix,
+                                         y_div=bfdiv,
                                          z_div=z_div))
 
         block_positions = ('left', 'right', 'top', 'bottom')
@@ -330,9 +326,7 @@ class Mesher(object):
 
         for i, b in enumerate(blockList[1:]):
             blockList[i+1] = self._interpCylindrical(b, r_major, r_minor, block_angles[i], block_positions[i], 'none')
-
         block = self._mergeBlocks(blockList)
-
         # identify elliptical surface nodes
         residual = np.sum(block["nodes"][:,0:2]**2 / [r_major**2, r_minor**2], axis=1) - 1.0
         ind = np.argwhere(np.abs(residual) < 1e-7).ravel()
@@ -363,8 +357,6 @@ class Mesher(object):
                                   "f_bottom_"+name: f_bottom}}
 
         self.meshes.append(mesh_dict)
-
-
 
 
     def makeHalfCylinder(self, name=None, r_major=1.0, r_minor=1.0, z_length=1.0,
@@ -415,56 +407,52 @@ class Mesher(object):
                 raise SystemExit("z_edge must be less than z_length")
             z_div = np.ceil(z_length / z_edge)
 
-        xmin = r_major * np.cos(3*np.pi/4.0)
-        xmax = r_major * np.cos(np.pi/4.0)
-        ymin = r_minor * np.sin(3*np.pi/4.0)
-        ymax = r_minor * np.sin(np.pi/4.0)
-        xleft = xmin + ymin - r_minor / 2.0
-        xright = r_minor / 2.0 - ymax + xmax
-        inner_divx = int(np.ceil((xright - xleft) / r_major * r_major_div))
-        outer_divx = np.ceil(2.0*r_major_div - inner_divx)
-        outer_divy = np.ceil(r_minor / 2.0 * r_minor_div)
-        outer_div = int(np.ceil((outer_divx + outer_divy) / 2.0))
+        #this proportion results in half area as inner square
+        prop = np.sqrt(np.pi / 12.0)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(r_minor_div * prop)
+        divs = np.max([np.ceil(r_major_div * (1-prop)), np.ceil(r_minor_div*(1-prop))])
+        bfdiv = int(divs)
         blockList = []
         # middle block
-        blockList.append(self._makeBlock(x_origin=xleft,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
                                          y_origin=0.0,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright - xleft,
-                                         y_length=r_minor / 2.0,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_minor * prop,
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=r_minor_div,
+                                         x_div=2*ix,
+                                         y_div=iy,
                                          z_div=z_div))
         # left block
         blockList.append(self._makeBlock(x_origin=-r_major,
                                          y_origin=0.0,
                                          z_origin=-z_length / 2.0,
-                                         x_length=r_major + xleft,
-                                         y_length=r_minor / 2.0,
+                                         x_length=r_major * (1-prop),
+                                         y_length=r_minor * prop,
                                          z_length=z_length,
-                                         x_div=outer_div,
-                                         y_div=r_minor_div,
+                                         x_div=bfdiv,
+                                         y_div=iy,
                                          z_div=z_div))
         # right block
-        blockList.append(self._makeBlock(x_origin=xright,
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
                                          y_origin=0.0,
                                          z_origin=-z_length / 2.0,
-                                         x_length=r_major - xright,
-                                         y_length=r_minor / 2.0,
+                                         x_length=r_major * (1-prop),
+                                         y_length=r_minor * prop,
                                          z_length=z_length,
-                                         x_div=outer_div,
-                                         y_div=r_minor_div,
+                                         x_div=bfdiv,
+                                         y_div=iy,
                                          z_div=z_div))
         # top block
-        blockList.append(self._makeBlock(x_origin=xleft,
-                                         y_origin=r_minor / 2.0,
+        blockList.append(self._makeBlock(x_origin=-r_major * prop,
+                                         y_origin=r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright - xleft,
-                                         y_length=r_minor / 2.0,
+                                         x_length=2 * r_major * prop,
+                                         y_length=r_minor * (1-prop),
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=outer_div,
+                                         x_div=2*ix,
+                                         y_div=bfdiv,
                                          z_div=z_div))
 
         block_positions = ('left', 'right', 'top')
@@ -563,43 +551,42 @@ class Mesher(object):
                 raise SystemExit("z_edge must be less than z_length")
             z_div = np.ceil(z_length / z_edge)
 
-        xmax = r_major * np.cos(np.pi/4.0)
-        ymax = r_minor * np.sin(np.pi/4.0)
-        xright = r_minor / 2.0 - ymax + xmax
-        inner_divx = int(np.ceil(xright / r_major * r_major_div))
-        outer_divx = np.ceil(2.0*r_major_div - inner_divx)
-        outer_divy = np.ceil(r_minor / 2.0 * r_minor_div)
-        outer_div = int(np.ceil((outer_divx + outer_divy) / 2.0))
+        #this proportion results in half area as inner square
+        prop = np.sqrt(np.pi / 12.0)
+        ix = int(np.ceil(r_major_div * prop))
+        iy = int(r_minor_div * prop)
+        divs = np.max([np.ceil(r_major_div * (1-prop)), np.ceil(r_minor_div*(1-prop))])
+        bfdiv = int(divs)
         blockList = []
         # middle block
         blockList.append(self._makeBlock(x_origin=0.0,
                                          y_origin=0.0,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright,
-                                         y_length=r_minor / 2.0,
+                                         x_length=r_major * prop,
+                                         y_length=r_minor * prop,
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=r_minor_div,
+                                         x_div=ix,
+                                         y_div=iy,
                                          z_div=z_div))
         # right block
-        blockList.append(self._makeBlock(x_origin=xright,
+        blockList.append(self._makeBlock(x_origin=r_major * prop,
                                          y_origin=0.0,
                                          z_origin=-z_length / 2.0,
-                                         x_length=r_major - xright,
-                                         y_length=r_minor / 2.0,
+                                         x_length=r_major * (1-prop),
+                                         y_length=r_minor * prop,
                                          z_length=z_length,
-                                         x_div=outer_div,
-                                         y_div=r_minor_div,
+                                         x_div=bfdiv,
+                                         y_div=iy,
                                          z_div=z_div))
         # top block
         blockList.append(self._makeBlock(x_origin=0.0,
-                                         y_origin=r_minor / 2.0,
+                                         y_origin=r_minor * prop,
                                          z_origin=-z_length / 2.0,
-                                         x_length=xright,
-                                         y_length=r_minor / 2.0,
+                                         x_length=r_major * prop,
+                                         y_length=r_minor * (1-prop),
                                          z_length=z_length,
-                                         x_div=inner_divx,
-                                         y_div=outer_div,
+                                         x_div=ix,
+                                         y_div=bfdiv,
                                          z_div=z_div))
 
         block_positions = ('right', 'top')
@@ -646,7 +633,7 @@ class Mesher(object):
                                   "n_top_"+name: n_top,
                                   "n_bottom_"+name: n_bottom},
                      "ElementSets": {"e_"+name: block["element_ids"]},
-                     "NodeSets": {"f_outer_"+name: f_outer,
+                     "FaceSets": {"f_outer_"+name: f_outer,
                                   "f_back_"+name: f_back,
                                   "f_left_"+name: f_left,
                                   "f_top_"+name: f_top,
@@ -671,6 +658,7 @@ class Mesher(object):
             Middle radius of ellipsoid
         r_minor : float 1.0, optional
             Minor radius of ellipsoid
+       prop = np.sqrt(np.pi / 4.0)
         r_major_div : int 10, optional
             Number of element divisions in the major radial direction
         r_middle_div : int 10, optional
