@@ -1,10 +1,10 @@
 package:
   name: hexapy
-  version: 0.0 
+  version: 0.0.3 
 
 source:
   git_url: https://github.com/siboles/hexapy.git
-  git_rev: 0.0.1
+  git_rev: 0.0.3
 
 requirements:
   build:

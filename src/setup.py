@@ -12,7 +12,7 @@ class BinaryDistribution(Distribution):
         return False
 setup(
     name = 'hexapy',
-    version = '0.0',
+    version = '0.0.3',
     description = 'Provides tools for easy generation of hexahedral meshes of primitive shapes: boxes, elliptical cylinders, and ellipsoids, for use in finite element models.',
     packages = ['hexapy'],
     long_description = long_description,
