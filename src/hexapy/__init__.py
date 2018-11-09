@@ -1,1 +1,1 @@
-from hexapy import Mesher
+from .hexapy import Mesher

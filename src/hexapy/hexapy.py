@@ -78,15 +78,15 @@ class Mesher(object):
         block["elements"][0,0:4] = [node_start, z_div+node_start, x_div*z_div+z_div+node_start, x_div*z_div+node_start]
         block["elements"][0,4:] = block["elements"][0,0:4]+1
 
-        for i in xrange(x_div-2):
+        for i in range(x_div-2):
             block["elements"][i+1,:] = block["elements"][i,:]+z_div
         step = (x_div-1)
-        for i in xrange(z_div-2):
+        for i in range(z_div-2):
             block["elements"][(i+1)*step:(i+2)*step,:] = block["elements"][i*step:(i+1)*step,:]+1
 
         step = (x_div-1) * (z_div-1)
         increment = x_div*z_div
-        for i in xrange(y_div-2):
+        for i in range(y_div-2):
             block["elements"][(i+1)*step:(i+2)*step,:] = block["elements"][i*step:(i+1)*step,:]+increment
 
         self._coordinates.append(np.hstack((x, y, z)))
@@ -1413,19 +1413,19 @@ class Mesher(object):
         # build a KD-tree to quickly find coincident nodes
         tree = cKDTree(new_block["nodes"])
         remove = tree.query_pairs(tol, output_type='ndarray') + new_block["node_ids"][0]
-        updateMap = dict(zip(range(new_block["node_ids"][0], new_block["node_ids"][0] + new_block["node_ids"].size),
-                             new_block["node_ids"]))
-        for i in xrange(remove.shape[0]):
+        updateMap = dict(list(zip(list(range(new_block["node_ids"][0], new_block["node_ids"][0] + new_block["node_ids"].size)),
+                             new_block["node_ids"])))
+        for i in range(remove.shape[0]):
             if remove[i,0] < updateMap[remove[i,1]]:
                 updateMap[remove[i,1]] = remove[i,0]
         updateFunc = lambda k: updateMap.get(k, -1)
         new_block["elements"] = np.vectorize(updateFunc)(new_block["elements"])
 
         ns = new_block["node_ids"][0]
-        unique_nodes = np.unique(np.array(updateMap.values()))
+        unique_nodes = np.unique(np.array(list(updateMap.values())))
         new_block["nodes"] = new_block["nodes"][unique_nodes - ns, :]
-        listOfNodes = range(unique_nodes.shape[0]) + ns
-        updateMap = dict(zip(sorted(unique_nodes), listOfNodes))
+        listOfNodes = list(range(unique_nodes.shape[0])) + ns
+        updateMap = dict(list(zip(sorted(unique_nodes), listOfNodes)))
         new_block["elements"] = np.vectorize(updateFunc)(new_block["elements"])
         new_block["node_ids"] = np.array(listOfNodes)
         new_block["element_ids"] = np.arange(new_block["elements"].shape[0]) + new_block["element_ids"][0]
@@ -1482,7 +1482,7 @@ class Mesher(object):
             try:
                 fset.append([eids[i], smap[', '.join(map(str,ind[i]))]])
             except:
-                print elements[i] 
+                print(elements[i]) 
         return fset
 
 
@@ -1616,14 +1616,14 @@ class Mesher(object):
             for m in self.meshes:
                 fid.write("*PART,NAME={:s}\n".format(m["Name"]))
                 fid.write("*NODE\n")
-                for i in xrange(m["NodeIDs"].shape[0]):
+                for i in range(m["NodeIDs"].shape[0]):
                     fid.write("{:d},{:.5e},{:.5e},{:.5e}\n".format(
                         m["NodeIDs"][i],
                         m["Nodes"][i, 0],
                         m["Nodes"][i, 1],
                         m["Nodes"][i, 2]))
                 fid.write("*ELEMENT,TYPE=C3D8\n")
-                for i in xrange(m["ElementIDs"].shape[0]):
+                for i in range(m["ElementIDs"].shape[0]):
                     fid.write("{:d},{:d},{:d},{:d},{:d},{:d},{:d},{:d},{:d}\n".format(
                         m["ElementIDs"][i],
                         m["Elements"][i, 0],
@@ -1634,21 +1634,21 @@ class Mesher(object):
                         m["Elements"][i, 5],
                         m["Elements"][i, 6],
                         m["Elements"][i, 7]))
-                for key, value in m["NodeSets"].items():
+                for key, value in list(m["NodeSets"].items()):
                     fid.write("*NSET,NSET={:s}\n".format(key))
                     split = np.array_split(value, np.ceil(value.shape[0] / 10.0))
                     for s in split:
-                        for i in xrange(s.shape[0]):
+                        for i in range(s.shape[0]):
                             fid.write("{:d},".format(s[i]))
                         fid.write("\n")
-                for key, value in m["ElementSets"].items():
+                for key, value in list(m["ElementSets"].items()):
                     fid.write("*ELSET,ELSET={:s}\n".format(key))
                     split = np.array_split(value, np.ceil(value.shape[0] / 10.0))
                     for s in split:
-                        for i in xrange(s.shape[0]):
+                        for i in range(s.shape[0]):
                             fid.write("{:d},".format(s[i]))
                         fid.write("\n")
-                for key, value in m["FaceSets"].items():
+                for key, value in list(m["FaceSets"].items()):
                     fid.write("*SURFACE,NAME={:s}\n".format(key))
                     for v in value:
                         fid.write("{:d},{:s}\n".format(v[0], v[1][0]))
